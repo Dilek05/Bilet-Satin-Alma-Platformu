@@ -1,0 +1,14 @@
+version: '3.8'
+# Docker Compose dosyası web servisini tanımlar
+services:
+  web:
+    build: .
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html
+      - ./db:/var/www/html/db
+    environment:
+      - APACHE_DOCUMENT_ROOT=/var/www/html
+
+    
