@@ -28,6 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $islem = $_POST['islem'] ?? '';
 
     try {
+        csrf_token_kontrol($_POST['_token'] ?? null);
         if ($islem === 'firma_ekle') {
             $ad = trim($_POST['firma_ad'] ?? '');
             $logo = trim($_POST['logo_yol'] ?? '');
@@ -42,10 +43,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             $basarilar[] = 'Yeni firma eklendi.';
         } elseif ($islem === 'firma_guncelle') {
-            $id = $_POST['firma_id'] ?? '';
+            $id = guvenli_id($_POST['firma_id'] ?? '', 'Firma bulunamad��.');
             $ad = trim($_POST['firma_ad'] ?? '');
             $logo = trim($_POST['logo_yol'] ?? '');
-            if ($id === '' || $ad === '') {
+            if ($ad === '') {
                 throw new RuntimeException('Firma güncellemesi için tüm bilgileri doldurun.');
             }
             $guncelle = $pdo->prepare('UPDATE bus_company SET name = :ad, logo_path = :logo WHERE id = :id');
@@ -59,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $basarilar[] = 'Firma bilgileri güncellendi.';
         } elseif ($islem === 'firma_sil') {
-            $id = $_POST['firma_id'] ?? '';
+            $id = guvenli_id($_POST['firma_id'] ?? '', 'Silinecek firma se�ilmedi.');
             if ($id === '') {
                 throw new RuntimeException('Silinecek firma seçilmedi.');
             }
@@ -73,8 +74,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $adSoyad = trim($_POST['ad_soyad'] ?? '');
             $email = strtolower(trim($_POST['email'] ?? ''));
             $parola = $_POST['parola'] ?? '';
-            $firmaId = $_POST['firma_id'] ?? '';
-            if ($adSoyad === '' || $email === '' || $parola === '' || $firmaId === '') {
+            $firmaId = guvenli_id($_POST['firma_id'] ?? '', 'Firma se�imi zorunludur.');
+            if ($adSoyad === '' || $email === '' || $parola === '') {
                 throw new RuntimeException('Firma admini eklemek için tüm alanları doldurun.');
             }
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -105,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!in_array($tur, ['YUZDE', 'SABIT'], true)) {
                 throw new RuntimeException('Kupon türü geçersiz.');
             }
-            $firmaId = $firmaId !== '' ? $firmaId : null;
+            $firmaId = $firmaId !== '' ? guvenli_id($firmaId, 'Firma se�imi ge�ersiz.') : null;
             if ($firmaId) {
                 $firmaVar = $pdo->prepare('SELECT COUNT(*) FROM bus_company WHERE id = :id');
                 $firmaVar->execute([':id' => $firmaId]);
@@ -235,6 +236,7 @@ $kuponlar = $pdo->query(
     <section class="panel">
       <h2>Yeni Firma Ekle</h2>
       <form method="post" class="stack-form">
+        <?= csrf_token_form(); ?>
         <input type="hidden" name="islem" value="firma_ekle">
         <label>
           Firma Adı
@@ -258,6 +260,7 @@ $kuponlar = $pdo->query(
         <div class="form-table">
           <?php foreach ($firmalar as $firma): ?>
             <form method="post" class="form-row">
+              <?php echo csrf_token_form(); ?>
               <input type="hidden" name="islem" value="firma_guncelle">
               <input type="hidden" name="firma_id" value="<?= htmlspecialchars($firma['id']) ?>">
               <div>
@@ -277,6 +280,7 @@ $kuponlar = $pdo->query(
               </div>
             </form>
             <form method="post" class="form-row danger-row" onsubmit="return confirm('Firmayı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.');">
+              <?php echo csrf_token_form(); ?>
               <input type="hidden" name="islem" value="firma_sil">
               <input type="hidden" name="firma_id" value="<?= htmlspecialchars($firma['id']) ?>">
               <div>Firmanın tüm verileri silinir.</div>
@@ -292,6 +296,7 @@ $kuponlar = $pdo->query(
     <section class="panel">
       <h2>Yeni Firma Admini Oluştur</h2>
       <form method="post" class="stack-form">
+        <?php echo csrf_token_form(); ?>
         <input type="hidden" name="islem" value="firma_admin_ekle">
         <label>
           Ad Soyad
@@ -351,6 +356,7 @@ $kuponlar = $pdo->query(
     <section class="panel">
       <h2>Kupon Yönetimi</h2>
       <form method="post" class="stack-form">
+        <?php echo csrf_token_form(); ?>
         <input type="hidden" name="islem" value="kupon_ekle">
         <label>
           Kupon Kodu
@@ -397,6 +403,7 @@ $kuponlar = $pdo->query(
         <div class="form-table">
           <?php foreach ($kuponlar as $kupon): ?>
             <form method="post" class="form-row">
+              <?php echo csrf_token_form(); ?>
               <input type="hidden" name="islem" value="kupon_guncelle">
               <input type="hidden" name="kupon_id" value="<?= htmlspecialchars($kupon['id']) ?>">
               <div>
@@ -431,6 +438,7 @@ $kuponlar = $pdo->query(
               </div>
             </form>
             <form method="post" class="form-row danger-row" onsubmit="return confirm('Kuponu silmek istediğinize emin misiniz?');">
+              <?php echo csrf_token_form(); ?>
               <input type="hidden" name="islem" value="kupon_sil">
               <input type="hidden" name="kupon_id" value="<?= htmlspecialchars($kupon['id']) ?>">
               <div>Kupon silinecek ve tekrar kullanılamayacak.</div>

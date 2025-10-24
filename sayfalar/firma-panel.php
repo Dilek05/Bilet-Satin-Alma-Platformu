@@ -72,6 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $islem = $_POST['islem'] ?? '';
 
     try {
+        csrf_token_kontrol($_POST['_token'] ?? null);
         if ($islem === 'sefer_ekle') {
             $nereden = trim($_POST['origin'] ?? '');
             $nereye = trim($_POST['destination'] ?? '');
@@ -91,6 +92,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $fiyatKurus = tl_to_kurus($fiyat);
+            if ($fiyatKurus <= 0 || $fiyatKurus > 1000000) {
+                throw new RuntimeException('Fiyat 0\'dan büyük ve en fazla 10.000 TL olmalıdır.');
+            }
 
             $ekle = $pdo->prepare(
                 'INSERT INTO trips (id, company_id, origin_city, destination_city, departure_time, arrival_time, price_kurus, capacity)
@@ -108,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             $basarilar[] = 'Yeni sefer başarıyla oluşturuldu.';
         } elseif ($islem === 'sefer_guncelle') {
-            $seferId = $_POST['trip_id'] ?? '';
+            $seferId = guvenli_id($_POST['trip_id'] ?? '', 'Sefer bulunamad��.');
             $nereden = trim($_POST['origin'] ?? '');
             $nereye = trim($_POST['destination'] ?? '');
             $kalkis = $_POST['departure'] ?? '';
@@ -137,6 +141,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $fiyatKurus = tl_to_kurus($fiyat);
+            if ($fiyatKurus <= 0 || $fiyatKurus > 1000000) {
+                throw new RuntimeException('Fiyat 0\'dan büyük ve en fazla 10.000 TL olmalıdır.');
+            }
 
             $guncelle = $pdo->prepare(
                 'UPDATE trips
@@ -160,7 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             $basarilar[] = 'Sefer bilgileri güncellendi.';
         } elseif ($islem === 'sefer_sil') {
-            $seferId = $_POST['trip_id'] ?? '';
+            $seferId = guvenli_id($_POST['trip_id'] ?? '', 'Silinecek sefer se��ilmedi.');
             if ($seferId === '') {
                 throw new RuntimeException('Silinecek sefer seçilmedi.');
             }
@@ -210,7 +217,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             $basarilar[] = 'Kupon oluşturuldu.';
         } elseif ($islem === 'kupon_guncelle') {
-            $kuponId = $_POST['kupon_id'] ?? '';
+            $kuponId = guvenli_id($_POST['kupon_id'] ?? '', 'Kupon bulunamad��.');
             $tur = $_POST['kupon_tur'] ?? 'YUZDE';
             $deger = (int)($_POST['kupon_deger'] ?? 0);
             $limit = $_POST['kupon_limit'] === '' ? null : (int)$_POST['kupon_limit'];
@@ -258,7 +265,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             $basarilar[] = 'Kupon bilgileri güncellendi.';
         } elseif ($islem === 'kupon_sil') {
-            $kuponId = $_POST['kupon_id'] ?? '';
+            $kuponId = guvenli_id($_POST['kupon_id'] ?? '', 'Silinecek kupon se��ilmedi.');
             if ($kuponId === '') {
                 throw new RuntimeException('Silinecek kupon seçilmedi.');
             }
@@ -355,6 +362,7 @@ $sehirListesi = [
     <section class="panel">
       <h2>Yeni Sefer Oluştur</h2>
       <form method="post" class="stack-form">
+        <?php echo csrf_token_form(); ?>
         <input type="hidden" name="islem" value="sefer_ekle">
         <label class="inline-field">
           Nereden
@@ -394,6 +402,7 @@ $sehirListesi = [
         <div class="form-table">
           <?php foreach ($seferler as $sefer): ?>
             <form method="post" class="form-row">
+              <?php echo csrf_token_form(); ?>
               <input type="hidden" name="islem" value="sefer_guncelle">
               <input type="hidden" name="trip_id" value="<?= htmlspecialchars($sefer['id']) ?>">
               <div>
@@ -429,6 +438,7 @@ $sehirListesi = [
               </div>
             </form>
             <form method="post" class="form-row danger-row" onsubmit="return confirm('Bu seferi silmek istediğinize emin misiniz?');">
+              <?php echo csrf_token_form(); ?>
               <input type="hidden" name="islem" value="sefer_sil">
               <input type="hidden" name="trip_id" value="<?= htmlspecialchars($sefer['id']) ?>">
               <div>Seferi silmek tüm rezervasyonları iptal eder.</div>
@@ -444,6 +454,7 @@ $sehirListesi = [
     <section class="panel">
       <h2>Kuponlar</h2>
       <form method="post" class="stack-form">
+        <?php echo csrf_token_form(); ?>
         <input type="hidden" name="islem" value="kupon_ekle">
         <label>
           Kupon Kodu
@@ -481,6 +492,7 @@ $sehirListesi = [
         <div class="form-table">
           <?php foreach ($kuponlar as $kupon): ?>
             <form method="post" class="form-row">
+              <?php echo csrf_token_form(); ?>
               <input type="hidden" name="islem" value="kupon_guncelle">
               <input type="hidden" name="kupon_id" value="<?= htmlspecialchars($kupon['id']) ?>">
               <div>
@@ -515,6 +527,7 @@ $sehirListesi = [
               </div>
             </form>
             <form method="post" class="form-row danger-row" onsubmit="return confirm('Kuponu silmek istediğinize emin misiniz?');">
+              <?php echo csrf_token_form(); ?>
               <input type="hidden" name="islem" value="kupon_sil">
               <input type="hidden" name="kupon_id" value="<?= htmlspecialchars($kupon['id']) ?>">
               <div>Kupon silinecek ve tekrar kullanılamayacak.</div>
